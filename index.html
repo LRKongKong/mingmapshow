@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>思维导图 - 多AI对比</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            height: 100%;
+        }
+        .sidebar {
+            width: 200px;
+            background-color: #f8f9fa;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+        .sidebar-header {
+            padding: 15px 10px;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .topic-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .topic-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #e9ecef;
+            transition: all 0.2s;
+        }
+        .topic-item:hover {
+            background-color: #e9ecef;
+        }
+        .topic-item.active {
+            background-color: #e7f1ff;
+            color: #1677ff;
+            font-weight: bold;
+        }
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .ai-tabs {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 5px 10px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .ai-tab {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            background-color: #eee;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .ai-tab:hover {
+            background-color: #ddd;
+        }
+        .ai-tab.active {
+            background-color: #1677ff;
+            color: white;
+        }
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .toggle-sidebar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 110;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-size: 16px;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                height: 100%;
+                left: -200px;
+                transition: left 0.3s ease;
+            }
+            .sidebar.visible {
+                left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar visible" id="sidebar">
+            <div class="sidebar-header">文件</div>
+            <div class="topic-list">
+                <div class="topic-item active" data-topic="budget">单文件-预算助手文件分析</div>
+                <div class="topic-item" data-topic="bike">单文件-校园共享电单车论文分析</div>
+                <div class="topic-item" data-topic="transport">多文件-共享交通多论文分析</div>
+            </div>
+        </div>
+        <div class="content">
+            <button class="toggle-sidebar" id="toggleSidebar">☰</button>
+            <div class="ai-tabs">
+                <button class="ai-tab active" data-ai="douban">豆包</button>
+                <button class="ai-tab" data-ai="kimi">Kimi</button>
+                <button class="ai-tab" data-ai="deepseek">DeepSeek</button>
+            </div>
+            <iframe id="ai-frame" src="预算助手豆包.html" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // 文件映射表
+        const fileMap = {
+            budget: {
+                douban: "预算助手豆包.html",
+                kimi: "预算助手 kimi.html",
+                deepseek: "预算助手 DeepSeek.html"
+            },
+            bike: {
+                douban: "校园共享电单车豆包.html",
+                kimi: "校园共享电单车 kimi.html",
+                deepseek: "校园共享单车 DeepSeek.html"
+            },
+            transport: {
+                douban: "多文件共享交通分析豆包.html", // 注意：该文件名似乎有问题，应该更新为正确的豆包版本
+                kimi: "多文件共享交通分析kimi.html",
+                deepseek: "多文件共享交通分析 DeepSeek.html"
+            }
+        };
+        
+        // 当前选择的主题和AI
+        let currentTopic = "budget";
+        let currentAI = "douban";
+        
+        // 选择主题
+        document.querySelectorAll('.topic-item').forEach(item => {
+            item.addEventListener('click', () => {
+                // 更新UI
+                document.querySelector('.topic-item.active').classList.remove('active');
+                item.classList.add('active');
+                
+                // 更新当前选择
+                currentTopic = item.dataset.topic;
+                
+                // 更新iframe
+                updateIframe();
+                
+                // 在移动端自动关闭侧边栏
+                if (window.innerWidth <= 768) {
+                    document.getElementById('sidebar').classList.remove('visible');
+                }
+            });
+        });
+        
+        // 选择AI
+        document.querySelectorAll('.ai-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // 更新UI
+                document.querySelector('.ai-tab.active').classList.remove('active');
+                tab.classList.add('active');
+                
+                // 更新当前选择
+                currentAI = tab.dataset.ai;
+                
+                // 更新iframe
+                updateIframe();
+            });
+        });
+        
+        // 更新iframe
+        function updateIframe() {
+            const frame = document.getElementById('ai-frame');
+            frame.src = fileMap[currentTopic][currentAI];
+        }
+        
+        // 侧边栏切换
+        document.getElementById('toggleSidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('visible');
+        });
+        
+        // 响应式处理
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                document.getElementById('sidebar').classList.add('visible');
+            }
+        });
+    </script>
+</body>
+</html>
